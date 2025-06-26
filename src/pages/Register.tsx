@@ -179,7 +179,7 @@ const Register = () => {
                 <Checkbox
                   id="terms"
                   checked={acceptedTerms}
-                  onCheckedChange={setAcceptedTerms}
+                  onCheckedChange={(checked) => setAcceptedTerms(checked === true)}
                 />
                 <Label htmlFor="terms" className="text-sm text-gray-600">
                   I agree to the Terms of Service and Privacy Policy

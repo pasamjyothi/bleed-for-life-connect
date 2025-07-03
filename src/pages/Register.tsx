@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { Droplets, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -18,11 +19,28 @@ const Register = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    bloodType: '',
+    password: '',
+    confirmPassword: ''
+  });
+
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (!acceptedTerms) {
       toast({
         title: "Terms Required",
@@ -31,18 +49,72 @@ const Register = () => {
       });
       return;
     }
+
+    if (formData.password !== formData.confirmPassword) {
+      toast({
+        title: "Password Mismatch",
+        description: "Passwords do not match. Please try again.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast({
+        title: "Password Too Short",
+        description: "Password must be at least 6 characters long.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      toast({
-        title: "Account Created!",
-        description: "Welcome to BleedForLife community!",
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            phone: formData.phone,
+            blood_type: formData.bloodType
+          }
+        }
       });
-      navigate('/dashboard');
-    }, 2000);
+
+      if (error) {
+        if (error.message.includes('already registered')) {
+          toast({
+            title: "Account Exists",
+            description: "An account with this email already exists. Please sign in instead.",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Registration Failed",
+            description: error.message,
+            variant: "destructive"
+          });
+        }
+      } else {
+        toast({
+          title: "Account Created!",
+          description: "Welcome to BleedForLife community! Please check your email to verify your account.",
+        });
+        navigate('/dashboard');
+      }
+    } catch (error) {
+      toast({
+        title: "Registration Failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -78,6 +150,8 @@ const Register = () => {
                   <Input
                     id="firstName"
                     placeholder="John"
+                    value={formData.firstName}
+                    onChange={(e) => handleInputChange('firstName', e.target.value)}
                     required
                     className="h-12"
                   />
@@ -87,6 +161,8 @@ const Register = () => {
                   <Input
                     id="lastName"
                     placeholder="Doe"
+                    value={formData.lastName}
+                    onChange={(e) => handleInputChange('lastName', e.target.value)}
                     required
                     className="h-12"
                   />
@@ -99,6 +175,8 @@ const Register = () => {
                   id="email"
                   type="email"
                   placeholder="john@example.com"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
                   required
                   className="h-12"
                 />
@@ -110,6 +188,8 @@ const Register = () => {
                   id="phone"
                   type="tel"
                   placeholder="+1 (555) 123-4567"
+                  value={formData.phone}
+                  onChange={(e) => handleInputChange('phone', e.target.value)}
                   required
                   className="h-12"
                 />
@@ -117,7 +197,7 @@ const Register = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="bloodType">Blood Type</Label>
-                <Select required>
+                <Select onValueChange={(value) => handleInputChange('bloodType', value)} required>
                   <SelectTrigger className="h-12">
                     <SelectValue placeholder="Select your blood type" />
                   </SelectTrigger>
@@ -138,6 +218,8 @@ const Register = () => {
                     id="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="Create a strong password"
+                    value={formData.password}
+                    onChange={(e) => handleInputChange('password', e.target.value)}
                     required
                     className="h-12 pr-10"
                   />
@@ -160,6 +242,8 @@ const Register = () => {
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
                     placeholder="Confirm your password"
+                    value={formData.confirmPassword}
+                    onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
                     required
                     className="h-12 pr-10"
                   />

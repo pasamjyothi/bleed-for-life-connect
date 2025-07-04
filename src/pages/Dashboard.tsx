@@ -25,7 +25,7 @@ const Dashboard = () => {
   const { toast } = useToast();
   
   // State for user data
-  const [userProfile, setUserProfile] = useState(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const [donationStats, setDonationStats] = useState({
     totalDonations: 0,
     livesImpacted: 0,
@@ -56,8 +56,8 @@ const Dashboard = () => {
           return;
         }
 
-        // Fetch user profile from profiles table
-        const { data: profile, error: profileError } = await supabase
+        // Fetch user profile from profiles table using type assertion
+        const { data: profile, error: profileError } = await (supabase as any)
           .from('profiles')
           .select('*')
           .eq('user_id', user.id)
@@ -73,15 +73,17 @@ const Dashboard = () => {
           return;
         }
 
-        setUserProfile(profile);
-        
-        // Update donation stats with real data
-        setDonationStats({
-          totalDonations: 0, // This will be updated when we add donations table
-          livesImpacted: 0,  // Calculated as totalDonations * 3
-          nextDonation: "Available",
-          bloodType: profile.blood_type
-        });
+        if (profile) {
+          setUserProfile(profile);
+          
+          // Update donation stats with real data
+          setDonationStats({
+            totalDonations: 0, // This will be updated when we add donations table
+            livesImpacted: 0,  // Calculated as totalDonations * 3
+            nextDonation: "Available",
+            bloodType: profile.blood_type || "Not specified"
+          });
+        }
 
       } catch (error) {
         console.error('Error fetching user data:', error);
@@ -111,7 +113,7 @@ const Dashboard = () => {
 
   const userName = userProfile ? userProfile.first_name : 'User';
   const userInitials = userProfile ? 
-    `${userProfile.first_name[0]}${userProfile.last_name[0]}` : 'U';
+    `${userProfile.first_name?.[0] || ''}${userProfile.last_name?.[0] || ''}` : 'U';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 to-red-100">

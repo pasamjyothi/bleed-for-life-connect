@@ -12,6 +12,8 @@ import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import DonationRequest from "./pages/DonationRequest";
 import EmergencyRequest from "./pages/EmergencyRequest";
+import DonationHistory from "./pages/DonationHistory";
+import AddDonation from "./pages/AddDonation";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +33,8 @@ const App = () => (
           <Route path="/profile" element={<Profile />} />
           <Route path="/donation-request" element={<DonationRequest />} />
           <Route path="/emergency" element={<EmergencyRequest />} />
+          <Route path="/donation-history" element={<DonationHistory />} />
+          <Route path="/add-donation" element={<AddDonation />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

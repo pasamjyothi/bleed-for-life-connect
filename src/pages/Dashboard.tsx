@@ -30,15 +30,11 @@ const Dashboard = () => {
     totalDonations: 0,
     livesImpacted: 0,
     nextDonation: "Available",
-    bloodType: ""
+    bloodType: "Not specified",
+    lastDonationDate: null as string | null
   });
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  const [notifications] = useState([
-    { id: 1, title: "Emergency Request Nearby", type: "emergency", time: "2 min ago" },
-    { id: 2, title: "Donation Scheduled Tomorrow", type: "reminder", time: "1 hour ago" },
-    { id: 3, title: "Thank You Message Received", type: "message", time: "3 hours ago" }
-  ]);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -56,8 +52,8 @@ const Dashboard = () => {
           return;
         }
 
-        // Fetch user profile from profiles table using type assertion
-        const { data: profile, error: profileError } = await (supabase as any)
+        // Fetch user profile from profiles table
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('user_id', user.id)
@@ -65,24 +61,77 @@ const Dashboard = () => {
 
         if (profileError) {
           console.error('Profile error:', profileError);
-          toast({
-            title: "Error",
-            description: "Failed to load profile data.",
-            variant: "destructive"
-          });
-          return;
+          // If profile doesn't exist, create one
+          if (profileError.code === 'PGRST116') {
+            const { error: insertError } = await supabase
+              .from('profiles')
+              .insert({
+                user_id: user.id,
+                first_name: user.user_metadata?.first_name || '',
+                last_name: user.user_metadata?.last_name || '',
+                phone: user.user_metadata?.phone || '',
+                blood_type: user.user_metadata?.blood_type || ''
+              });
+            
+            if (insertError) {
+              console.error('Error creating profile:', insertError);
+            } else {
+              // Refetch the profile
+              const { data: newProfile } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('user_id', user.id)
+                .single();
+              setUserProfile(newProfile);
+            }
+          }
+        } else {
+          setUserProfile(profile);
         }
 
-        if (profile) {
-          setUserProfile(profile);
+        // Fetch donation statistics
+        const { data: donations, error: donationsError } = await supabase
+          .from('donations')
+          .select('*')
+          .eq('donor_id', user.id)
+          .order('donation_date', { ascending: false });
+
+        if (!donationsError && donations) {
+          const totalDonations = donations.length;
+          const lastDonation = donations[0];
+          const lastDonationDate = lastDonation ? lastDonation.donation_date : null;
           
-          // Update donation stats with real data
+          // Calculate next donation eligibility (56 days after last donation)
+          let nextDonation = "Available";
+          if (lastDonationDate) {
+            const lastDate = new Date(lastDonationDate);
+            const nextEligibleDate = new Date(lastDate.getTime() + (56 * 24 * 60 * 60 * 1000));
+            const today = new Date();
+            
+            if (today < nextEligibleDate) {
+              nextDonation = nextEligibleDate.toLocaleDateString();
+            }
+          }
+
           setDonationStats({
-            totalDonations: 0, // This will be updated when we add donations table
-            livesImpacted: 0,  // Calculated as totalDonations * 3
-            nextDonation: "Available",
-            bloodType: profile.blood_type || "Not specified"
+            totalDonations,
+            livesImpacted: totalDonations * 3, // Each donation can save up to 3 lives
+            nextDonation,
+            bloodType: profile?.blood_type || "Not specified",
+            lastDonationDate
           });
+        }
+
+        // Fetch notifications
+        const { data: userNotifications, error: notificationsError } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        if (!notificationsError && userNotifications) {
+          setNotifications(userNotifications);
         }
 
       } catch (error) {
@@ -111,9 +160,13 @@ const Dashboard = () => {
     );
   }
 
-  const userName = userProfile ? userProfile.first_name : 'User';
+  const userName = userProfile ? 
+    `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim() || 'User' 
+    : 'User';
+  
   const userInitials = userProfile ? 
-    `${userProfile.first_name?.[0] || ''}${userProfile.last_name?.[0] || ''}` : 'U';
+    `${userProfile.first_name?.[0] || ''}${userProfile.last_name?.[0] || ''}` || 'U'
+    : 'U';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 to-red-100">
@@ -133,9 +186,9 @@ const Dashboard = () => {
               onClick={() => navigate('/notifications')}
             >
               <Bell className="w-5 h-5" />
-              {notifications.length > 0 && (
+              {notifications.filter(n => !n.is_read).length > 0 && (
                 <Badge className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-xs blood-gradient">
-                  {notifications.length}
+                  {notifications.filter(n => !n.is_read).length}
                 </Badge>
               )}
             </Button>
@@ -184,7 +237,7 @@ const Dashboard = () => {
             <CardContent className="p-4">
               <div className="space-y-2">
                 <Calendar className="w-8 h-8 text-green-500 mx-auto" />
-                <div className="text-2xl font-bold text-gray-900">{donationStats.nextDonation}</div>
+                <div className="text-lg font-bold text-gray-900">{donationStats.nextDonation}</div>
                 <div className="text-sm text-gray-600">Next Donation</div>
               </div>
             </CardContent>
@@ -248,18 +301,24 @@ const Dashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {notifications.map((notification) => (
-                <div key={notification.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-                  <div className={`w-2 h-2 rounded-full mt-2 ${
-                    notification.type === 'emergency' ? 'bg-red-500' :
-                    notification.type === 'reminder' ? 'bg-blue-500' : 'bg-green-500'
-                  }`} />
-                  <div className="flex-1">
-                    <div className="text-sm font-medium text-gray-900">{notification.title}</div>
-                    <div className="text-xs text-gray-500">{notification.time}</div>
+              {notifications.length > 0 ? (
+                notifications.map((notification) => (
+                  <div key={notification.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+                    <div className={`w-2 h-2 rounded-full mt-2 ${
+                      notification.type === 'emergency' ? 'bg-red-500' :
+                      notification.type === 'reminder' ? 'bg-blue-500' : 'bg-green-500'
+                    }`} />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-gray-900">{notification.title}</div>
+                      <div className="text-xs text-gray-500">{new Date(notification.created_at).toLocaleDateString()}</div>
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="text-center text-gray-500 py-4">
+                  No notifications yet
                 </div>
-              ))}
+              )}
             </CardContent>
           </Card>
 
@@ -275,17 +334,23 @@ const Dashboard = () => {
                 <div className="w-16 h-16 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full mx-auto flex items-center justify-center">
                   <Award className="w-8 h-8 text-white" />
                 </div>
-                <h3 className="font-semibold">Lifesaver Badge</h3>
-                <p className="text-sm text-gray-600">You've helped save {donationStats.livesImpacted}+ lives through your donations!</p>
+                <h3 className="font-semibold">
+                  {donationStats.totalDonations >= 10 ? 'Hero Donor' :
+                   donationStats.totalDonations >= 5 ? 'Regular Donor' :
+                   donationStats.totalDonations >= 1 ? 'Lifesaver' : 'Future Hero'}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  You've helped save {donationStats.livesImpacted}+ lives through your donations!
+                </p>
               </div>
               
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span>Progress to next milestone</span>
-                  <span>{donationStats.livesImpacted}/50 lives</span>
+                  <span>{donationStats.totalDonations}/10 donations</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="blood-gradient h-2 rounded-full" style={{ width: `${Math.min((donationStats.livesImpacted / 50) * 100, 100)}%` }}></div>
+                  <div className="blood-gradient h-2 rounded-full" style={{ width: `${Math.min((donationStats.totalDonations / 10) * 100, 100)}%` }}></div>
                 </div>
               </div>
             </CardContent>

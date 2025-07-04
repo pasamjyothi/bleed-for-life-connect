@@ -9,7 +9,207 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      blood_requests: {
+        Row: {
+          blood_type: string
+          contact_phone: string
+          created_at: string | null
+          hospital_address: string
+          hospital_name: string
+          id: string
+          medical_condition: string | null
+          needed_by: string | null
+          patient_name: string
+          requester_id: string
+          status: string | null
+          units_needed: number
+          updated_at: string | null
+          urgency_level: string | null
+        }
+        Insert: {
+          blood_type: string
+          contact_phone: string
+          created_at?: string | null
+          hospital_address: string
+          hospital_name: string
+          id?: string
+          medical_condition?: string | null
+          needed_by?: string | null
+          patient_name: string
+          requester_id: string
+          status?: string | null
+          units_needed: number
+          updated_at?: string | null
+          urgency_level?: string | null
+        }
+        Update: {
+          blood_type?: string
+          contact_phone?: string
+          created_at?: string | null
+          hospital_address?: string
+          hospital_name?: string
+          id?: string
+          medical_condition?: string | null
+          needed_by?: string | null
+          patient_name?: string
+          requester_id?: string
+          status?: string | null
+          units_needed?: number
+          updated_at?: string | null
+          urgency_level?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blood_requests_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      donations: {
+        Row: {
+          blood_type: string
+          created_at: string | null
+          donation_center: string | null
+          donation_date: string
+          donor_id: string
+          id: string
+          notes: string | null
+          status: string | null
+          units_donated: number | null
+        }
+        Insert: {
+          blood_type: string
+          created_at?: string | null
+          donation_center?: string | null
+          donation_date: string
+          donor_id: string
+          id?: string
+          notes?: string | null
+          status?: string | null
+          units_donated?: number | null
+        }
+        Update: {
+          blood_type?: string
+          created_at?: string | null
+          donation_center?: string | null
+          donation_date?: string
+          donor_id?: string
+          id?: string
+          notes?: string | null
+          status?: string | null
+          units_donated?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donations_donor_id_fkey"
+            columns: ["donor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          message: string
+          title: string
+          type: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message: string
+          title: string
+          type?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          title?: string
+          type?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          address: string | null
+          blood_type: string | null
+          city: string | null
+          created_at: string | null
+          date_of_birth: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          first_name: string | null
+          id: string
+          is_available_donor: boolean | null
+          last_name: string | null
+          medical_conditions: string | null
+          phone: string | null
+          state: string | null
+          updated_at: string | null
+          user_id: string
+          zip_code: string | null
+        }
+        Insert: {
+          address?: string | null
+          blood_type?: string | null
+          city?: string | null
+          created_at?: string | null
+          date_of_birth?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          first_name?: string | null
+          id?: string
+          is_available_donor?: boolean | null
+          last_name?: string | null
+          medical_conditions?: string | null
+          phone?: string | null
+          state?: string | null
+          updated_at?: string | null
+          user_id: string
+          zip_code?: string | null
+        }
+        Update: {
+          address?: string | null
+          blood_type?: string | null
+          city?: string | null
+          created_at?: string | null
+          date_of_birth?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          first_name?: string | null
+          id?: string
+          is_available_donor?: boolean | null
+          last_name?: string | null
+          medical_conditions?: string | null
+          phone?: string | null
+          state?: string | null
+          updated_at?: string | null
+          user_id?: string
+          zip_code?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
